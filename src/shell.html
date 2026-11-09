@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Árbol de búsqueda Kairos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Kairos: mesa de laboratorio sobria. El árbol manda; el color solo marca estados y tareas. */
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --ink: #121417;
+  --ink-2: #4b515a;
+  --muted: #747b85;
+  --line: #dde1e6;
+  --line-2: #eef0f3;
+  --accent: #1f5fbf;
+  --accent-soft: #e7eefa;
+  --ok: #2e7d32;   --ok-bg: #e4f2e7;
+  --bad: #c0392b;  --bad-bg: #fce9e7;
+  --cut: #8a8f97;  --cut-bg: #f6f7f8;
+  --leaf-bg: #eceff2;
+  --t1: #2a78d6; --t2: #eb6834; --t3: #1baf7a; --t4: #eda100;
+  --t5: #e87ba4; --t6: #008300; --t7: #6250d6; --t8: #e34948; --t-otro: #8a8f98;
+  --t4-ink: #0b0b0b;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1013; --surface: #161a1f; --ink: #eef1f4; --ink-2: #b9c0c8; --muted: #8b939d;
+    --line: #2b3139; --line-2: #1f242a; --accent: #6ea6ff; --accent-soft: #1a2a44;
+    --ok: #4caf50; --ok-bg: #173322; --bad: #ef6b5f; --bad-bg: #3a1c19;
+    --cut: #8b939d; --cut-bg: #1b2026; --leaf-bg: #232930;
+    --t1: #3987e5; --t2: #d95926; --t3: #199e70; --t4: #c98500;
+    --t5: #d55181; --t6: #008300; --t7: #9085e9; --t8: #e66767; --t-otro: #6b727c;
+    --t4-ink: #ffffff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1013; --surface: #161a1f; --ink: #eef1f4; --ink-2: #b9c0c8; --muted: #8b939d;
+  --line: #2b3139; --line-2: #1f242a; --accent: #6ea6ff; --accent-soft: #1a2a44;
+  --ok: #4caf50; --ok-bg: #173322; --bad: #ef6b5f; --bad-bg: #3a1c19;
+  --cut: #8b939d; --cut-bg: #1b2026; --leaf-bg: #232930;
+  --t1: #3987e5; --t2: #d95926; --t3: #199e70; --t4: #c98500;
+  --t5: #d55181; --t6: #008300; --t7: #9085e9; --t8: #e66767; --t-otro: #6b727c;
+  --t4-ink: #ffffff;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--font-ui); }
+button, select, input { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; color: var(--ink); text-wrap: balance; }
+.num, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; }
+
+/* ---------- Encabezado ---------- */
+.top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 10px 16px;
+       background: var(--surface); border-bottom: 1px solid var(--line); }
+.marca { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.marca h1 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+.marca p { margin: 0; color: var(--ink-2); font-size: 13px; }
+.top .esp { flex: 1; }
+.campo-inline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+select, input[type="text"], input[type="number"] {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; min-height: 32px; }
+select { padding-right: 24px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 5px 11px;
+       background: var(--surface); border: 1px solid var(--line); border-radius: 7px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--ink-2); }
+.btn.primario { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 600; }
+.btn.primario:hover { opacity: .9; }
+.btn.icono { width: 34px; padding: 0; font-size: 15px; }
+.btn[disabled] { opacity: .45; cursor: default; }
+
+/* ---------- Cuerpo ---------- */
+.cuerpo { display: grid; grid-template-columns: 330px minmax(0, 1fr) 380px; gap: 12px; padding: 12px; min-height: 0; }
+.app.sin-datos .cuerpo { grid-template-columns: minmax(0, 1fr) 380px; }
+.app.sin-datos aside.datos { display: none; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+aside.datos { overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px; }
+aside.detalle { overflow: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.tarjeta { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.tarjeta h2 { font-size: 15px; font-weight: 600; }
+.sub { color: var(--muted); font-size: 12px; }
+.fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ---------- Datos (editor) ---------- */
+.seccion-datos { display: flex; flex-direction: column; gap: 8px; }
+aside.datos h2 { font-size: 16px; font-weight: 600; }
+.seccion-datos h3 { font-size: 12px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .06em; }
+.rejilla-cal { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 13px; }
+.rejilla-cal label { color: var(--ink-2); }
+.tarea { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.tarea .cab { display: flex; gap: 6px; align-items: center; }
+.tarea .cab input { flex: 1; min-width: 0; }
+.tarea .det { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 6px; align-items: center; font-size: 12px; color: var(--ink-2); }
+.tarea .det select { min-height: 28px; padding: 2px 20px 2px 6px; font-size: 12.5px; }
+.tarea .dom { font-size: 11.5px; color: var(--muted); }
+.tarea .dom.alerta { color: var(--bad); }
+.chip-tarea { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 6px;
+              border-radius: 5px; font: 600 12px var(--font-mono); color: #fff; }
+.fijo { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 4px; align-items: center; font-size: 12.5px; }
+.fijo select { min-height: 28px; padding: 2px 20px 2px 6px; font-size: 12.5px; }
+.quitar { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; width: 26px; height: 26px; border-radius: 5px; }
+.quitar:hover { background: var(--bad-bg); color: var(--bad); }
+.quitar[disabled] { visibility: hidden; }
+
+/* ---------- Centro ---------- */
+section.centro { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 10px; min-height: 0; min-width: 0; }
+.barra { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; }
+.segmentado { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.segmentado button { border: 0; background: var(--surface); padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--ink-2);
+                     border-right: 1px solid var(--line); min-height: 32px; }
+.segmentado button:last-child { border-right: 0; }
+.segmentado button[aria-pressed="true"] { background: var(--ink); color: var(--surface); font-weight: 600; }
+.controles { display: inline-flex; gap: 4px; }
+.scrub { flex: 1; min-width: 140px; display: flex; align-items: center; gap: 8px; }
+.scrub input { flex: 1; accent-color: var(--accent); }
+.contador { font: 500 13px var(--font-mono); white-space: nowrap; color: var(--ink-2); }
+
+.estadisticas { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.stat { padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; }
+.stat .et { font-size: 11.5px; color: var(--muted); }
+.stat .va { font: 600 20px/1.15 var(--font-mono); font-variant-numeric: tabular-nums; }
+.stat .va small { font-size: 12px; color: var(--muted); font-weight: 500; }
+.stat.ok .va { color: var(--ok); }
+
+.lienzo { position: relative; min-height: 340px; overflow: hidden; }
+.lienzo svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; user-select: none; }
+.lienzo svg.arrastrando { cursor: grabbing; }
+.vista-ctrl { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.vista-ctrl .btn { min-height: 28px; padding: 2px 9px; font-size: 12px; background: color-mix(in srgb, var(--surface) 92%, transparent); }
+.vista-ctrl .btn[aria-pressed="true"] { border-color: var(--ink); font-weight: 600; }
+.aviso { position: absolute; top: 8px; left: 8px; max-width: 60%; font-size: 12px; color: var(--ink-2);
+         background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.aviso:empty { display: none; }
+.leyenda { position: absolute; bottom: 8px; left: 8px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--ink-2);
+           background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; max-width: calc(100% - 16px); }
+.leyenda span { display: inline-flex; align-items: center; gap: 5px; }
+.leyenda i { width: 16px; height: 11px; border-radius: 3px; border: 1.5px solid var(--ink-2); background: var(--surface); display: inline-block; }
+.leyenda i.l-hoja { background: var(--leaf-bg); }
+.leyenda i.l-mejor { background: var(--ok-bg); border-color: var(--ok); }
+.leyenda i.l-podado { background: var(--cut-bg); border-color: var(--cut); border-style: dashed; }
+.leyenda i.l-inc { background: var(--bad-bg); border-color: var(--bad); }
+.leyenda i.l-actual { border-color: var(--accent); border-width: 2.5px; }
+.leyenda i.l-retorno { border-color: var(--accent); border-style: dashed; }
+.cargando { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+            background: color-mix(in srgb, var(--surface) 80%, transparent); font: 500 14px var(--font-mono); color: var(--ink-2); }
+.cargando.activo { display: flex; }
+
+/* ---------- Árbol (SVG) ---------- */
+.nd rect.caja { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.2; }
+.nd circle.punto { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.4; }
+.nd text { fill: var(--ink); font-family: var(--font-ui); pointer-events: none; }
+.nd text.l1 { font-size: 12.5px; font-weight: 600; }
+.nd text.l2 { font-size: 10.5px; fill: var(--muted); font-family: var(--font-mono); }
+.nd { cursor: pointer; }
+.n-raiz rect.caja, .n-raiz circle.punto { stroke: var(--ink); stroke-width: 2; }
+.n-hoja rect.caja, .n-hoja circle.punto { fill: var(--leaf-bg); }
+.n-podado rect.caja, .n-podado circle.punto { fill: var(--cut-bg); stroke: var(--cut); stroke-dasharray: 4 3; }
+.n-podado text.l1 { fill: var(--ink-2); }
+.n-inconsistente rect.caja, .n-inconsistente circle.punto { fill: var(--bad-bg); stroke: var(--bad); }
+.nd.retorno rect.caja, .nd.retorno circle.punto { stroke: var(--accent); stroke-width: 2.2; stroke-dasharray: 3 2; }
+.nd.mejor rect.caja, .nd.mejor circle.punto { fill: var(--ok-bg); stroke: var(--ok); stroke-width: 2.4; }
+.nd.inspeccion rect.caja, .nd.inspeccion circle.punto { stroke: var(--accent); stroke-width: 2.4; stroke-dasharray: none; }
+.ed { fill: none; stroke: var(--muted); stroke-width: 1.2; }
+.ed.e-podado { stroke: var(--cut); stroke-dasharray: 4 3; }
+.ed.e-inconsistente { stroke: var(--bad); opacity: .55; }
+.ed.camino { stroke: var(--ok); stroke-width: 2.6; opacity: 1; stroke-dasharray: none; }
+.halo { fill: none; stroke: var(--accent); stroke-width: 3; pointer-events: none; }
+
+/* ---------- Detalle ---------- */
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+        border: 1px solid var(--line); color: var(--ink-2); background: var(--surface); }
+.pill.p-hoja { background: var(--leaf-bg); }
+.pill.p-mejor { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.pill.p-podado { background: var(--cut-bg); border-style: dashed; }
+.pill.p-inconsistente { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); }
+.asig-grande { font-size: 17px; font-weight: 600; }
+.camino-txt { font-size: 12.5px; color: var(--ink-2); }
+.explica { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; color: var(--ink); font-size: 13.5px; }
+.explica li::marker { color: var(--muted); }
+.inspeccion-aviso { font-size: 12px; color: var(--accent); }
+
+/* Calendario */
+.cal { display: grid; grid-template-columns: 42px 1fr; gap: 4px 6px; font-size: 11.5px; }
+.cal .horas { position: relative; height: 16px; color: var(--muted); font-family: var(--font-mono); font-size: 10.5px; }
+.cal .horas span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.cal .dia { color: var(--ink-2); font-weight: 600; align-self: center; }
+.cal .pista { position: relative; height: 30px; border-radius: 5px; background:
+  repeating-linear-gradient(to right, var(--line-2) 0, var(--line-2) 1px, transparent 1px, transparent calc(100% / var(--bloques))); background-color: var(--bg); border: 1px solid var(--line); }
+.cal .barra-t { position: absolute; top: 3px; bottom: 3px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+                font: 600 11px var(--font-mono); color: #fff; overflow: hidden; white-space: nowrap; border: 2px solid var(--surface); }
+.cal .barra-t.fijo { color: var(--ink-2); background: repeating-linear-gradient(45deg, var(--line) 0 5px, var(--bg) 5px 10px); border-color: var(--line); font-family: var(--font-ui); font-weight: 500; }
+.cal .barra-t.destacado { outline: 2.5px solid var(--accent); outline-offset: 1px; }
+.cal .barra-t.conflicto { background: var(--bad-bg) !important; color: var(--bad); border: 2px dashed var(--bad); }
+.estado-tareas { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--ink-2); align-items: center; }
+
+.resumen-num { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.resumen-num .grande { font: 600 26px var(--font-mono); }
+.lista-horario { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.lista-horario li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; }
+.lista-horario .cuando { color: var(--ink-2); font-family: var(--font-mono); font-size: 12px; }
+.alertas { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.alertas li { border: 1px solid var(--line); border-left: 4px solid var(--cut); border-radius: 6px; padding: 7px 9px; font-size: 12.5px; }
+.alertas li.critica { border-left-color: var(--bad); }
+.alertas li.media { border-left-color: #eda100; }
+.alertas li b { display: block; margin-bottom: 2px; }
+
+table.doms { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.doms th, table.doms td { padding: 3px 6px; border-bottom: 1px solid var(--line-2); text-align: right; }
+table.doms th:first-child, table.doms td:first-child { text-align: left; }
+table.doms th { font-weight: 600; color: var(--ink-2); font-size: 11.5px; }
+table.doms td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+table.doms td:first-child { font-family: var(--font-ui); }
+table.doms tr.cambio td.des { font-weight: 600; }
+table.doms tr.vacio td.des, table.doms tr.vacio td:last-child { color: var(--bad); font-weight: 600; }
+table.comp { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.comp th, table.comp td { text-align: right; padding: 5px 4px; border-bottom: 1px solid var(--line-2); }
+table.comp th:first-child, table.comp td:first-child { text-align: left; }
+table.comp th { font-weight: 600; color: var(--ink-2); font-size: 11.5px; }
+table.comp td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+table.comp td:first-child { font-family: var(--font-ui); }
+table.comp tr.sel td { font-weight: 600; }
+.grafico svg { width: 100%; height: auto; display: block; }
+.grafico text { fill: var(--ink-2); font-family: var(--font-mono); font-size: 10.5px; }
+.grafico text.met { font-family: var(--font-ui); font-size: 11.5px; fill: var(--ink); }
+.grafico .grid { stroke: var(--line); stroke-width: 1; }
+.grafico .punto { fill: var(--t1); stroke: var(--surface); stroke-width: 2; }
+.grafico .guia { stroke: var(--line); stroke-width: 1; }
+
+.atajos { font-size: 11.5px; color: var(--muted); }
+kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--surface); }
+
+@media (max-width: 1240px) {
+  .cuerpo { grid-template-columns: 300px minmax(0, 1fr) 340px; }
+}
+@media (max-width: 1100px) {
+  .cuerpo, .app.sin-datos .cuerpo { grid-template-columns: minmax(0, 1fr) 340px; }
+  aside.datos { grid-column: 1 / -1; max-height: 46vh; }
+}
+@media (max-width: 820px) {
+  html, body, .app { height: auto; }
+  .cuerpo, .app.sin-datos .cuerpo { grid-template-columns: minmax(0, 1fr); }
+  aside.datos { max-height: none; }
+  .lienzo { height: 64vh; }
+  aside.detalle { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="marca">
+      <h1>Kairos</h1>
+      <p>Planificación de tareas como PSR · el árbol de búsqueda se construye nodo por nodo</p>
+    </div>
+    <div class="esp"></div>
+    <label class="campo-inline" for="sel-caso">Caso
+      <select id="sel-caso">
+        <option value="base">Caso base · 3 tareas (A, B, C)</option>
+        <option value="realista">Caso realista · 5 tareas + clases</option>
+        <option value="estres">Prueba de estrés · 7 tareas</option>
+        <option value="personal" hidden>Personalizado</option>
+      </select>
+    </label>
+    <button class="btn" id="btn-datos" aria-pressed="true" title="Mostrar u ocultar el panel de datos">Ocultar datos</button>
+  </header>
+
+  <main class="cuerpo">
+    <!-- Datos del problema -->
+    <aside class="datos panel" id="panel-datos" aria-label="Datos del problema">
+      <div class="seccion-datos">
+        <h2>Datos del problema</h2>
+        <p class="sub" id="datos-nota">Puedes cambiar cualquier dato; el agente vuelve a buscar solo.</p>
+      </div>
+      <div class="seccion-datos">
+        <h3>Calendario</h3>
+        <div class="rejilla-cal" id="ed-calendario"></div>
+      </div>
+      <div class="seccion-datos">
+        <h3>Tareas (variables)</h3>
+        <div id="ed-tareas" class="seccion-datos"></div>
+        <button class="btn" id="btn-agregar-tarea">+ Agregar tarea</button>
+      </div>
+      <div class="seccion-datos">
+        <h3>Bloques fijos (R1)</h3>
+        <div id="ed-fijos" class="seccion-datos"></div>
+        <button class="btn" id="btn-agregar-fijo">+ Agregar bloque fijo</button>
+      </div>
+      <div class="seccion-datos">
+        <h3>Restricciones del modelo</h3>
+        <p class="sub" style="margin:0">R1: no usar bloques fijos · R2: sin cruces y 30 min de descanso entre tareas del mismo día · R3: terminar antes del plazo · R4: tope de horas por día. Ø = tarea no programada (aporta 0).</p>
+      </div>
+      <button class="btn" id="btn-restablecer">Restablecer el caso original</button>
+    </aside>
+
+    <!-- Árbol -->
+    <section class="centro">
+      <div class="barra panel">
+        <div class="segmentado" role="group" aria-label="Método de búsqueda" id="seg-metodo">
+          <button data-metodo="fb" aria-pressed="false">Fuerza bruta</button>
+          <button data-metodo="cd" aria-pressed="false">VMR + VMRe + CD</button>
+          <button data-metodo="poda" aria-pressed="true">+ Poda optimista</button>
+        </div>
+        <div class="controles" role="group" aria-label="Reproducción">
+          <button class="btn icono" id="btn-inicio" title="Ir a la raíz (Inicio)" aria-label="Ir a la raíz">⏮</button>
+          <button class="btn icono" id="btn-atras" title="Paso atrás (←)" aria-label="Paso atrás">◀</button>
+          <button class="btn primario" id="btn-play" title="Reproducir o pausar (espacio)">▶ Reproducir</button>
+          <button class="btn icono" id="btn-paso" title="Paso adelante (→)" aria-label="Paso adelante">▶|</button>
+          <button class="btn icono" id="btn-final" title="Ir al final (Fin)" aria-label="Ir al final">⏭</button>
+        </div>
+        <div class="scrub">
+          <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Paso del recorrido">
+          <span class="contador" id="contador">0 / 0</span>
+        </div>
+        <label class="campo-inline" for="sel-vel">Velocidad
+          <select id="sel-vel">
+            <option value="1">1 nodo/s</option>
+            <option value="2">2 nodos/s</option>
+            <option value="4">4 nodos/s</option>
+            <option value="10">10 nodos/s</option>
+            <option value="25">25 nodos/s</option>
+            <option value="60">60 nodos/s</option>
+            <option value="200">200 nodos/s</option>
+            <option value="600">600 nodos/s</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="estadisticas" id="estadisticas"></div>
+
+      <div class="lienzo panel" id="lienzo">
+        <svg id="svg" role="img" aria-label="Árbol de búsqueda del agente">
+          <g id="capa-aristas"></g>
+          <g id="capa-nodos"></g>
+          <g id="capa-halo"></g>
+        </svg>
+        <div class="aviso" id="aviso"></div>
+        <div class="vista-ctrl">
+          <button class="btn" id="btn-orient" title="Cambiar orientación del árbol">Vertical</button>
+          <button class="btn" id="btn-etiquetas" aria-pressed="true" title="Mostrar cajas con texto o solo puntos">Etiquetas</button>
+          <button class="btn" id="btn-seguir" aria-pressed="true" title="Mover la vista con el nodo actual">Seguir nodo</button>
+          <button class="btn" id="btn-ajustar" title="Ver todo el árbol">Ver todo</button>
+          <button class="btn" id="btn-mas" title="Acercar" aria-label="Acercar">+</button>
+          <button class="btn" id="btn-menos" title="Alejar" aria-label="Alejar">−</button>
+        </div>
+        <div class="leyenda" aria-label="Leyenda del árbol">
+          <span><i></i>expandido</span>
+          <span><i class="l-hoja"></i>hoja (horario completo)</span>
+          <span><i class="l-mejor"></i>mejor horario</span>
+          <span><i class="l-podado"></i>podado ✂</span>
+          <span><i class="l-inc"></i>viola R2/R4 ✗</span>
+          <span><i class="l-actual"></i>nodo actual</span>
+          <span><i class="l-retorno"></i>vuelve aquí (retroceso ↩)</span>
+        </div>
+        <div class="cargando" id="cargando">Calculando…</div>
+      </div>
+    </section>
+
+    <!-- Detalle -->
+    <aside class="detalle" aria-label="Detalle">
+      <section class="panel tarjeta" id="tarjeta-paso" aria-live="polite">
+        <div class="fila" style="justify-content: space-between">
+          <h2 id="paso-titulo">Paso actual</h2>
+          <span id="paso-pill"></span>
+        </div>
+        <div class="inspeccion-aviso" id="paso-inspeccion" hidden>Estás viendo un nodo elegido con clic. Pulsa ▶ o una flecha para volver al recorrido.</div>
+        <div class="asig-grande" id="paso-asig"></div>
+        <div class="camino-txt" id="paso-camino"></div>
+        <ul class="explica" id="paso-explica"></ul>
+        <div class="sub">Dominios en este nodo (bloques de inicio posibles)</div>
+        <div id="paso-dominios"></div>
+        <div class="sub">Estado del horario en este nodo</div>
+        <div id="paso-cal"></div>
+        <div class="estado-tareas" id="paso-tareas"></div>
+      </section>
+
+      <section class="panel tarjeta" id="tarjeta-resultado">
+        <h2>Horario que entrega el agente</h2>
+        <div id="res-resumen"></div>
+        <div id="res-cal"></div>
+        <ul class="lista-horario" id="res-lista"></ul>
+        <div>
+          <h2 style="font-size:14px; margin-bottom:6px">Alertas</h2>
+          <ul class="alertas" id="res-alertas"></ul>
+        </div>
+      </section>
+
+      <section class="panel tarjeta" id="tarjeta-comp">
+        <h2>Comparación de métodos</h2>
+        <p class="sub" style="margin:0" id="comp-nota">Nodos evaluados por cada método sobre el caso actual.</p>
+        <div class="grafico" id="comp-grafico"></div>
+        <table class="comp" id="comp-tabla"></table>
+        <p class="atajos">Atajos: <kbd>espacio</kbd> reproducir/pausar · <kbd>←</kbd> <kbd>→</kbd> paso · <kbd>Inicio</kbd> raíz · <kbd>Fin</kbd> final</p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+/*__PRESETS__*/
+</script>
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>
