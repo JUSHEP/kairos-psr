@@ -38,3 +38,7 @@ Simulador web del agente **Kairos**, un planificador de tareas para estudiantes 
 python pruebas/test_paridad.py
 node pruebas/test_paridad.js
 ```
+
+## Colab
+
+El notebook del proyecto, organizado por fases y sin comentarios: [`colab/Kairos_colab.ipynb`](colab/Kairos_colab.ipynb) · [Abrir en Google Colab](https://colab.research.google.com/github/JUSHEP/kairos-psr/blob/main/colab/Kairos_colab.ipynb)
